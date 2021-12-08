@@ -20,14 +20,14 @@ echo "\$4: $4"
 }
 
 # DEBUG
-dbg_print_args(){ 
+dbg_print_args(){
 	local arg
 	local cnt=1
 	echo "num of args: $#"
 	for arg in "$@"
 	do
 		echo "arg${cnt}: ${arg}"
-		cnt=$(expr ${cnt} + 1)
+		cnt=$((cnt+1))
 	done
 }
 
@@ -35,13 +35,13 @@ proto_t6s_setup() {
 	# DEBUG
 	echo "Entering proto_t6s_setup()"
 	dbg_print_args "$@"
-	
+
 	local cfg="$1"
 	local iface="$2"
 	local link="t6s-$cfg"
 	local remoteip6
 
-	local mtu ttl peeraddr ip6addr ipaddr tunlink zone weakif encaplimit wanif
+	local         mtu ttl peeraddr ip6addr ipaddr tunlink zone weakif encaplimit wanif
 	json_get_vars mtu ttl peeraddr ip6addr ipaddr tunlink zone weakif encaplimit
 
 	[ -z "$peeraddr" ] && {
@@ -87,7 +87,7 @@ proto_t6s_setup() {
 	local varname
 	for varname in cfg iface link remoteip6 mtu ttl peeraddr ip6addr ipaddr tunlink zone wanif weakif encaplimit
 	do
-		echo -e "${varname}=${!varname}" #BASHISM
+		eval "echo \"${varname}=\${${varname}}\""
 	done
 
 	# Try to get IPv6 default gate device
@@ -98,7 +98,7 @@ proto_t6s_setup() {
 	# Add IPv6 interface id address to WAN device
 	if [ -n "${wanif}" ] && [ -n "${ip6addr}" ]; then
 		# FIXME: Adhoc!
-		if ! ip -6 address show dev ${wanif} | grep -q "${ip6addr}"; then
+		if ! ip -6 address show dev "${wanif}" | grep -q "${ip6addr}"; then
 			if ! ip -6 address add "${ip6addr}/64" dev "${wanif}"; then
 				proto_notify_error "$cfg" "NO_IF_ADDR"
 				return
@@ -140,7 +140,7 @@ proto_t6s_setup() {
 	# proto_close_data
 
 	proto_send_update "$cfg"
- 
+
 	echo "Leaving proto_t6s_setup()"
 }
 
@@ -157,10 +157,10 @@ proto_t6s_teardown() {
 	# DEBUG
 	echo "wanif=${wanif}"
 	echo "ip6addr=${ip6addr}"
-	
+
 	# Delete Interface ID from WAN device
 	if [ -n "${wanif}" ] && [ -n "${ip6addr}" ]; then
-		if ip address show dev ${wanif} | grep -q "${ip6addr}"; then
+		if ip address show dev "${wanif}" | grep -q "${ip6addr}"; then
 			ip -6 address del "${ip6addr}" dev "${wanif}"
 		fi
 	fi
@@ -191,3 +191,5 @@ proto_t6s_init_config() {
 [ -n "$INCLUDE_ONLY" ] || {
         add_protocol t6s
 }
+
+# vim: set ts=4
