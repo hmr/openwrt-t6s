@@ -16,7 +16,7 @@ return network.registerProtocol('t6s', {
 	},
 
 	getOpkgPackage: function() {
-		return 'transix-static-ipv4';
+		return 't6s';
 	},
 
 	isFloating: function() {
@@ -42,11 +42,11 @@ return network.registerProtocol('t6s', {
 		o.rmempty  = false;
 		o.datatype = 'ipaddr("nomask")';
 
-		o = s.taboption('general', form.Value, 'peeraddr', _('Remote IPv6 address'), _('AFTR or Static IP tunnel endpoint unit notified by ISP'));
+		o = s.taboption('general', form.Value, 'peeraddr', _('Remote IPv6 address'), _('AFTR or Static IP ttunnel endpoint unit notified by ISP'));
 		o.rmempty  = false;
 		o.datatype = 'or(hostname,ip6addr("nomask"))';
 
-		o = s.taboption('general', form.Value, 'ip6addr', _('Interface ID'), _('IPv6 prefix(e.g. "1a00:2b00:3c00:4d00" + Interface ID(e.g. "::feed"). This is also notified by ISP'));
+		o = s.taboption('general', form.Value, 'ip6addr', _('Interface ID'), _('IPv6 prefix(e.g. "2001:db8:100:200" + Interface ID(e.g. "::feed"). This is also notified by ISP'));
 		o.datatype = 'ip6addr("nomask")';
 		o.load = function(section_id) {
 			return network.getWAN6Networks().then(L.bind(function(nets) {
