@@ -41,8 +41,8 @@ proto_t6s_setup() {
 	local link="t6s-$cfg"
 	local remoteip6
 
-	local         mtu ttl peeraddr ip6addr ipaddr tunlink zone weakif encaplimit wanif
-	json_get_vars mtu ttl peeraddr ip6addr ipaddr tunlink zone weakif encaplimit
+	local         mtu ttl peeraddr ip6addr ipaddr tunlink zone weakif encaplimit wanif upd_uri upd_username upd_password
+	json_get_vars mtu ttl peeraddr ip6addr ipaddr tunlink zone weakif encaplimit wanif upd_uri upd_username upd_password
 
 	[ -z "$peeraddr" ] && {
 		proto_notify_error "$cfg" "MISSING_ADDRESS"
@@ -85,15 +85,24 @@ proto_t6s_setup() {
 
 	# DEBUG
 	local varname
-	for varname in cfg iface link remoteip6 mtu ttl peeraddr ip6addr ipaddr tunlink zone wanif weakif encaplimit
+	for varname in cfg iface link remoteip6 mtu ttl peeraddr ip6addr ipaddr tunlink zone wanif weakif encaplimit upd_uri upd_username upd_password
 	do
 		eval "echo \"${varname}=\${${varname}}\""
 	done
 
-	# Try to get IPv6 default gate device
-	# [ -z "${wanif}" ] && wanif=$(route -n -A inet6 | grep 'UG' | head -n 1 | awk '{print $7}')
-	[ -z "${wanif}" ] && wanif=$(ip -6 route show | grep 'default' | head -n 1 | awk '{print $7}')
-	echo "wanif=${wanif}(guessed from default route)" # DEBUG
+	# Try to get WAN6 device
+	local net_if6
+	if [ -z "${wanif}" ]; then
+		network_find_wan6 net_if6
+		network_get_physdev wanif "${net_if6}"
+		echo "wanif=${wanif}"
+	fi
+	# Try to guess WAN6 device
+	if [ -z "${wanif}" ]; then
+		# [ -z "${wanif}" ] && wanif=$(route -n -A inet6 | grep 'UG' | head -n 1 | awk '{print $7}')
+		[ -z "${wanif}" ] && wanif=$(ip -6 route show | grep 'default' | head -n 1 | awk '{print $7}')
+		echo "wanif=${wanif}(guessed from default route)" # DEBUG
+	fi
 
 	# Add IPv6 interface id address to WAN device
 	if [ -n "${wanif}" ] && [ -n "${ip6addr}" ]; then
@@ -122,11 +131,11 @@ proto_t6s_setup() {
 	json_add_string remote "$peeraddr"
 	[ -n "$tunlink" ] && json_add_string link "$tunlink"
 	json_add_object "data"
-	  [ -n "$encaplimit" ] && json_add_string encaplimit "$encaplimit"
+	[ -n "$encaplimit" ] && json_add_string encaplimit "$encaplimit"
 	json_close_object
 	proto_close_tunnel
 
-	# FIXME: Adhoc: Isn't this part unnecessary because firewall setting's "Masquerading" is better way?
+	# FIXME: Adhoc: Isn't this part necessary because firewall setting's "Masquerading" is better way?
 	# zone="wan"
 	# proto_add_data
 	#   [ -n "$zone" ] && json_add_string zone "$zone"
@@ -141,6 +150,34 @@ proto_t6s_setup() {
 
 	proto_send_update "$cfg"
 
+	if [ -n "${upd_uri}" ] && [ -n "${upd_username}" ]  && [ -n "${upd_password}" ]; then
+		if which "uclient-fetch" > /dev/null 2>&1; then
+			echo "use uclient-fetch"
+			auth_bin="uclient-fetch"
+			auth_arg="-6 --quiet -O -"
+		elif which "wget" > /dev/null 2>&1; then
+			echo "use wget"
+			auth_bin="wget"
+			auth_arg="-6 --quiet -O -"
+		elif which "curl" > /dev/null 2>&1; then
+			echo "use curl"
+			auth_bin="curl"
+			auth_arg="-6 --silent -o -"
+		fi
+		echo "Authenticate at update server:"
+		echo "upd_uri=${upd_uri}"
+		echo "username=${upd_username}"
+		echo "password=${upd_password}"
+
+		local result
+		result="$(${auth_bin} ${auth_arg} "${upd_uri}?username=${upd_username}&password=${upd_password}")"
+
+		if [ "${result}" = "OK" ]; then
+			echo "Successfully updated"
+		else
+			echo "Update failed!"
+		fi
+	fi
 	echo "Leaving proto_t6s_setup()"
 }
 
@@ -150,8 +187,12 @@ proto_t6s_teardown() {
 
 	local cfg="$1"
 
-	# Try to set WAN I/F
-	local wanif
+	# Try to set WAN6 device
+	local wanif net_if6
+	if [ -z "${wanif}" ]; then
+		network_find_wan6 net_if6
+		network_get_physdev wanif "${net_if6}"
+	fi
 	[ -z "${wanif}" ] && wanif=$(route -n -A inet6 | grep 'UG' | awk '{print $7}')
 
 	# DEBUG
@@ -184,6 +225,10 @@ proto_t6s_init_config() {
 	proto_config_add_string "encaplimit"
 	proto_config_add_string "zone"
 	proto_config_add_string "weakif"
+	proto_config_add_string "wanif"
+	proto_config_add_string "upd_uri"
+	proto_config_add_string "upd_username"
+	proto_config_add_string "upd_password"
 
 	echo "Leaving proto_t6s_init_config()"
 }

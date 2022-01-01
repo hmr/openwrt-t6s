@@ -42,19 +42,35 @@ return network.registerProtocol('t6s', {
 		o.rmempty  = false;
 		o.datatype = 'ipaddr("nomask")';
 
-		o = s.taboption('general', form.Value, 'peeraddr', _('Remote IPv6 address'), _('AFTR or Static IP ttunnel endpoint unit notified by ISP'));
+		o = s.taboption('general', form.Value, 'peeraddr', _('Remote IPv6 address'), _('IPv6 address of the static IP tunnel endpoint unit'));
 		o.rmempty  = false;
 		o.datatype = 'or(hostname,ip6addr("nomask"))';
 
-		o = s.taboption('general', form.Value, 'ip6addr', _('Interface ID'), _('IPv6 prefix(e.g. "2001:db8:100:200" + Interface ID(e.g. "::feed"). This is also notified by ISP'));
+		o = s.taboption('general', form.Value, 'ip6addr', _('Local IPv6 address'), _('Your IPv6 prefix (e.g. "2001:db8:100:200") + Interface ID (e.g. "::feed")'));
 		o.datatype = 'ip6addr("nomask")';
 		o.load = function(section_id) {
 			return network.getWAN6Networks().then(L.bind(function(nets) {
-				if (Array.isArray(nets) && nets.length)
-					this.placeholder = nets[0].getIP6Addr();
-				return form.Value.prototype.load.apply(this, [section_id]);
+					if (Array.isArray(nets) && nets.length)
+							this.placeholder = nets[0].getIP6Addr();
+					return form.Value.prototype.load.apply(this, [section_id]);
 			}, this));
 		};
+
+		o = s.taboption('general', form.Value, 'upd_uri', _('Update server URI'), _('URI of update server'));
+		o.rmempty  = true;
+		o.datatype = 'string';
+		o.load = function(section_id) {
+			this.placeholder = "http://update.transix.jp/request";
+			return form.Value.prototype.load.apply(this, [section_id]);
+		};
+
+		o = s.taboption('general', form.Value, 'upd_username', _('Update server username'), _(''));
+		o.rmempty  = true;
+		o.datatype = 'string';
+
+		o = s.taboption('general', form.Value, 'upd_password', _('Update server password'), _(''));
+		o.rmempty  = true;
+		o.datatype = 'password';
 
 		o = s.taboption('advanced', widgets.NetworkSelect, 'tunlink', _('Tunnel Link'));
 		o.nocreate = true;
